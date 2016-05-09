@@ -10,7 +10,7 @@
     name='{{item}}'
     state=present
   with_items:
-    - spark-history-server # History server for Apache Spark
+    #- spark-history-server # History server for Apache Spark
     - spark-master # Server for Spark master
 
 

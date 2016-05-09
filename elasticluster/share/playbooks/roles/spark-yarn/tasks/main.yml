@@ -1,0 +1,37 @@
+# spark-common/tasks/main.yml
+---
+
+- name: Install Spark packages (YARN support)
+  tags:
+    - hadoop
+    - yarn
+    - spark
+  package:
+    name='{{item}}'
+    state=present
+  with_items:
+    - spark-thriftserver # Thrift server for Spark SQL
+    - spark-yarn-shuffle # Spark YARN Shuffle Service
+
+
+- name: Deploy Spark/ElastiCluster configuration files
+  tags:
+    - hadoop
+    - spark
+  template:
+    src='{{item}}.j2'
+    dest='{{SPARK_CONF_DIR}}/{{item}}'
+  with_items:
+    - spark-defaults.conf
+    #- spark-env.sh
+
+
+- name: Deploy PySpark configuration files
+  tags:
+    - hadoop
+    - spark
+  copy:
+    src='{{item}}'
+    dest='/{{item}}'
+  with_items:
+    - etc/profile.d/spark-yarn.sh
