@@ -165,6 +165,7 @@ setup(
         "Topic :: System :: Distributed Computing",
     ],
     packages=find_packages(),
+    setup_requires=['Babel>=2.3.4'],  # see Issue #268
     install_requires=required_packages,
     include_package_data=True,  # include files mentioned by MANIFEST.in
     entry_points={
