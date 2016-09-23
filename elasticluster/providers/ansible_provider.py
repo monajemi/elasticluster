@@ -189,7 +189,6 @@ class AnsibleSetupProvider(AbstractSetupProvider):
         ansible_env = {
             'ANSIBLE_FORKS':             '10',
             'ANSIBLE_HOST_KEY_CHECKING': 'no',
-            'ANSIBLE_PRIVATE_KEY_FILE':  cluster.user_key_private,
             'ANSIBLE_SSH_PIPELINING':    'yes',
             'ANSIBLE_TIMEOUT':           '120',
         }
@@ -210,6 +209,7 @@ class AnsibleSetupProvider(AbstractSetupProvider):
         # build `ansible-playbook` command-line
         cmd = shlex.split(self.extra_conf.get('ansible_command', 'ansible-playbook'))
         cmd += [
+            ('--private-key=' + cluster.user_key_private),
             os.path.realpath(self._playbook_path),
             ('--inventory=' + inventory_path),
         ] + list(extra_args)
