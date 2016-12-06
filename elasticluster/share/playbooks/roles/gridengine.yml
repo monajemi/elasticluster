@@ -31,6 +31,15 @@
         update_cache=yes
       when: 'is_debian_jessie'
     - include: gridengine/tasks/master.yml
+  roles:
+    - role: nfs-server
+      NFS_EXPORTS:
+        - path: '/home'
+          clients: '{{groups.gridengine_clients}}'
+          options: 'rw,no_root_squash,async,no_subtree_check'
+        - path: '/usr/share/gridengine/default/common'
+          clients: '{{groups.gridengine_clients + groups.gridengine_master}}'
+          options: 'rw,no_root_squash,no_subtree_check'
   handlers:
     - include: common/handlers/main.yml
     - include: gridengine/handlers/main.yml

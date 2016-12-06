@@ -27,10 +27,36 @@
   when: is_rhel_compatible
 
 
+# Provisional fix for issue #357
+- name: Mount /proc/fs/nfsd
+  tags:
+    - nfs
+    - nfs-server
+  mount:
+    name='/proc/fs/nfsd'
+    state=mounted
+    fstype='nfsd'
+    src='nfsd'
+  when: is_debian_8
+
+- name: Compatibility symlink
+  tags:
+    - nfs
+    - nfs-server
+  file:
+    path='/usr/share/gridengine/default'
+    src='/var/lib/gridengine/default'
+    state=link
+  when: is_debian_8
+
+
 # exports need to be there before attempting to install/start the
 # server, otherwise the service startup script might refuse to start
 # the NFS server
 - name: Export directories
+  tags:
+    - nfs
+    - nfs-server
   nfsexport:
     path='{{item.path}}'
     clients='{{item.clients}}'
@@ -47,7 +73,7 @@
   service:
     name={{item}}
     enabled=yes
-    state=started
+    state=restarted
   with_items:
     - nfs-kernel-server
   when: is_debian_compatible
@@ -82,5 +108,8 @@
 
 
 - name: Reload NFS exports file
+  tags:
+    - nfs
+    - nfs-server
   shell:
     exportfs -r
