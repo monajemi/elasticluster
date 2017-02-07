@@ -24,6 +24,7 @@
 - include: roles/gridengine.yml
 - include: roles/hadoop.yml
 - include: roles/kubernetes.yml
+- include: roles/mesos.yml
 - include: roles/pvfs2.yml
 - include: roles/ceph.yml
 - include: roles/glusterfs.yml
@@ -32,7 +33,7 @@
 
 # add-on software
 - include: roles/r.yml
-  
+
 # Jupyter installation comes last, to allow it to pick up any SW that's been
 # installed so far (e.g., for kernels, or for ipyparallel)
 - include: roles/jupyterhub.yml
