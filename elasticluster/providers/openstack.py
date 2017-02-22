@@ -400,7 +400,6 @@ class OpenStackCloudProvider(AbstractCloudProvider):
         self._check_security_groups(security_groups)
         vm_start_args['security_groups'] = security_groups
 
-
         # Check if the image id is present.
         if image_id not in [img.id for img in self._get_images()]:
             raise ImageError(
