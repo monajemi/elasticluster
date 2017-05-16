@@ -165,6 +165,8 @@ setup(
         ]
     },
     install_requires=([
+        # ElastiCluster core requirements
+        'pip>=9.0.0',  ## see issue #433
         'PyCLI',
         'ansible>=2.2.1',  ## see: https://www.computest.nl/advisories/CT-2017-0109_Ansible.txt
         'click>=4.0',  ## click.prompt() added in 4.0
