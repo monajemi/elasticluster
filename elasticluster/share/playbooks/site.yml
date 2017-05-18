@@ -21,14 +21,14 @@
 - include: roles/ganglia.yml
 - include: roles/glusterfs.yml
 - include: roles/gridengine.yml
-- include: roles/htcondor.yml
-- include: roles/pbs+maui.yml
 - include: roles/hadoop.yml
-- include: roles/kubernetes.yml
+- include: roles/htcondor.yml
 - include: roles/ipython.yml
 - include: roles/jenkins.yml
 - include: roles/kafka.yml
+- include: roles/kubernetes.yml
 - include: roles/mesos.yml
+- include: roles/pbs+maui.yml
 - include: roles/pvfs2.yml
 - include: roles/slurm.yml
 
