@@ -150,11 +150,27 @@ class OpenStackCloudProvider(AbstractCloudProvider):
         ``__setstate__``.
         """
         if not self.nova_client:
+            log.debug("Initializing OpenStack API clients:"
+                      " OS_AUTH_URL='%s'"
+                      " OS_USERNAME='%s'"
+                      " OS_USER_DOMAIN_NAME='%s'"
+                      " OS_PROJECT_NAME='%s'"
+                      " OS_PROJECT_DOMAIN_NAME='%s'"
+                      " OS_REGION_NAME='%s'"
+                      "", self._os_auth_url,
+                      self._os_username, self._os_user_domain_name,
+                      self._os_tenant_name, self._os_project_domain_name,
+                      self._os_region_name)
+            log.debug("Creating OpenStack Keystone session ...")  ### DEBUG
             sess = self.__init_keystone_session()
+            log.debug("Creating OpenStack Nova client ...")  ### DEBUG
             self.nova_client = nova_client.Client(self.nova_api_version, session=sess)
-            self.neutron_client = neutron_client.Client(session=sess)
-            self.glance_client = glance_client.Client('2', session=sess)
-            self.cinder_client = cinder_client.Client('2', session=sess)
+            log.debug("Creating OpenStack Neutron client ...")  ### DEBUG
+            self.neutron_client = neutron_client.Client(session=sess, region_name=self._os_region_name)
+            log.debug("Creating OpenStack Glance client ...")  ### DEBUG
+            self.glance_client = glance_client.Client('2', session=sess, region_name=self._os_region_name)
+            log.debug("Creating OpenStack Cinder client ...")  ### DEBUG
+            self.cinder_client = cinder_client.Client('2', session=sess, region_name=self._os_region_name)
 
     def __init_keystone_session(self):
         """Create and return a Keystone session object."""
@@ -556,7 +572,7 @@ class OpenStackCloudProvider(AbstractCloudProvider):
         except AttributeError:
             # ``glance_client.images.list()`` returns a generator, but callers
             # of `._get_images()` expect a Python list
-            return list(self.glance_client.images.list(region_name=self._os_region_name))
+            return list(self.glance_client.images.list())
 
     def _get_volumes(self):
         """Return list of available volumes."""
