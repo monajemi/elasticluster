@@ -161,16 +161,16 @@ class OpenStackCloudProvider(AbstractCloudProvider):
                       self._os_username, self._os_user_domain_name,
                       self._os_tenant_name, self._os_project_domain_name,
                       self._os_region_name)
-            log.debug("Creating OpenStack Keystone session ...")  ### DEBUG
             sess = self.__init_keystone_session()
-            log.debug("Creating OpenStack Nova client ...")  ### DEBUG
-            self.nova_client = nova_client.Client(self.nova_api_version, session=sess)
-            log.debug("Creating OpenStack Neutron client ...")  ### DEBUG
-            self.neutron_client = neutron_client.Client(session=sess, region_name=self._os_region_name)
-            log.debug("Creating OpenStack Glance client ...")  ### DEBUG
-            self.glance_client = glance_client.Client('2', session=sess, region_name=self._os_region_name)
-            log.debug("Creating OpenStack Cinder client ...")  ### DEBUG
-            self.cinder_client = cinder_client.Client('2', session=sess, region_name=self._os_region_name)
+            self.nova_client = nova_client.Client(
+                self.nova_api_version, session=sess,
+                region_name=self._os_region_name)
+            self.neutron_client = neutron_client.Client(
+                session=sess, region_name=self._os_region_name)
+            self.glance_client = glance_client.Client(
+                '2', session=sess, region_name=self._os_region_name)
+            self.cinder_client = cinder_client.Client(
+                '2', session=sess, region_name=self._os_region_name)
 
     def __init_keystone_session(self):
         """Create and return a Keystone session object."""
@@ -199,7 +199,6 @@ class OpenStackCloudProvider(AbstractCloudProvider):
             username=self._os_username,
             password=self._os_password,
             project_name=self._os_tenant_name,
-            region_name=self._os_region_name,
         )
         sess = keystoneauth1.session.Session(auth=auth)
         if check:
