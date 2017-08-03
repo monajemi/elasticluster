@@ -224,7 +224,6 @@ class OpenStackCloudProvider(AbstractCloudProvider):
             user_domain_name=self._os_user_domain_name,
             project_domain_name=self._os_project_domain_name,
             project_name=self._os_tenant_name,
-            region_name=self._os_region_name,
         )
         sess = keystoneauth1.session.Session(auth=auth)
         if check:
