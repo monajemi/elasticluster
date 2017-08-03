@@ -182,7 +182,8 @@ class OpenStackCloudProvider(AbstractCloudProvider):
             auth_url=self._os_auth_url,
             username=self._os_username,
             password=self._os_password,
-            project_name=self._os_tenant_name
+            project_name=self._os_tenant_name,
+            region_name=self._os_region_name,
         )
         sess = keystoneauth1.session.Session(auth=auth)
         if check:
@@ -222,7 +223,8 @@ class OpenStackCloudProvider(AbstractCloudProvider):
             password=self._os_password,
             user_domain_name=self._os_user_domain_name,
             project_domain_name=self._os_project_domain_name,
-            project_name=self._os_tenant_name
+            project_name=self._os_tenant_name,
+            region_name=self._os_region_name,
         )
         sess = keystoneauth1.session.Session(auth=auth)
         if check:
@@ -555,7 +557,7 @@ class OpenStackCloudProvider(AbstractCloudProvider):
         except AttributeError:
             # ``glance_client.images.list()`` returns a generator, but callers
             # of `._get_images()` expect a Python list
-            return list(self.glance_client.images.list())
+            return list(self.glance_client.images.list(region_name=self._os_region_name))
 
     def _get_volumes(self):
         """Return list of available volumes."""
