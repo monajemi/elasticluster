@@ -301,6 +301,16 @@ class GoogleCloudProvider(AbstractCloudProvider):
                 " should be a string or a list, got {T} instead"
                 .format(T=type(tags)))
 
+        compute_metadata = [{
+            "key": "sshKeys",
+            "value": "%s:%s" % (username, public_key_content)
+        }]
+        if image_userdata:
+            compute_metadata.append({
+                "key": "startup-script",
+                "value": image_userdata
+            })
+
         # construct the request body
         if node_name:
             instance_id = node_name.lower().replace('_', '-')  # GCE doesn't allow "_"
@@ -341,12 +351,7 @@ class GoogleCloudProvider(AbstractCloudProvider):
                 }],
             "metadata": {
                 "kind": "compute#metadata",
-                "items": [
-                    {
-                        "key": "sshKeys",
-                        "value": "%s:%s" % (username, public_key_content)
-                    }
-                ]
+                "items": compute_metadata,
             }
         }
 
