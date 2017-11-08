@@ -127,6 +127,8 @@ class OpenStackCloudProvider(AbstractCloudProvider):
     :param identity_api_version: What version of the Keystone API to use.
         Valid values are the strings `"v2"` or `"v3"`,
         or `None` (default, meaning try v3 first and fall-back to v2).
+    :param cacert: Path to CA certificate bundle (for verifying HTTPS sessions)
+        or ``None`` to use the systems' default.
     """
 
     __node_start_lock = threading.Lock()
@@ -145,9 +147,12 @@ class OpenStackCloudProvider(AbstractCloudProvider):
                  # this can be auto-detected
                  identity_api_version=None,
                  # this is deprecated in favor of `compute_api_version`
-                 nova_api_version=None):
+                 nova_api_version=None,
+                 cacert=None,  # keep in sync w/ default in novaclient.Client()
+    ):
         # OpenStack connection params
         self._os_auth_url = self._get_os_config_value('auth URL', auth_url, ['OS_AUTH_URL']).rstrip('/')
+        self._os_cacert = self._get_os_config_value('cacert', cacert, ['OS_CACERT'], default=None)
         self._os_username = self._get_os_config_value('user name', username, ['OS_USERNAME'])
         self._os_user_domain_name = self._get_os_config_value('user domain name', user_domain_name, ['OS_USER_DOMAIN_NAME'], 'default')
         self._os_password = self._get_os_config_value('password', password, ['OS_PASSWORD'])
@@ -227,27 +232,33 @@ class OpenStackCloudProvider(AbstractCloudProvider):
                       " OS_PROJECT_NAME='%s'"
                       " OS_PROJECT_DOMAIN_NAME='%s'"
                       " OS_REGION_NAME='%s'"
+                      " OS_CACERT='%s'"
                       "", self._os_auth_url,
                       self._os_username, self._os_user_domain_name,
                       self._os_tenant_name, self._os_project_domain_name,
-                      self._os_region_name)
+                      self._os_region_name,
+                      self._os_cacert)
             sess = self.__init_keystone_session()
             log.debug("Creating OpenStack Compute API (Nova) v%s client ...", self._compute_api_version)
             self.nova_client = nova_client.Client(
                 self._compute_api_version, session=sess,
-                region_name=self._os_region_name)
+                region_name=self._os_region_name,
+                cacert=self._os_cacert)
             log.debug("Creating OpenStack Network API (Neutron) client ...")
             self.neutron_client = neutron_client.Client(
                 #self._network_api_version,  ## doesn't work as of Neutron Client 2 :-(
-                session=sess, region_name=self._os_region_name)
+                session=sess, region_name=self._os_region_name,
+                cacert=self._os_cacert)
             log.debug("Creating OpenStack Image API (Glance) v%s client ...", self._image_api_version)
             self.glance_client = glance_client.Client(
                 self._image_api_version, session=sess,
-                region_name=self._os_region_name)
+                region_name=self._os_region_name,
+                cacert=self._os_cacert)
             log.debug("Creating OpenStack Volume API (Cinder) v%s client ...", self._volume_api_version)
             self.cinder_client = cinder_client.Client(
                 self._volume_api_version, session=sess,
-                region_name=self._os_region_name)
+                region_name=self._os_region_name,
+                cacert=self._os_cacert)
 
     def __init_keystone_session(self):
         """Create and return a Keystone session object."""
