@@ -482,10 +482,13 @@ class OpenStackCloudProvider(AbstractCloudProvider):
                 floating_ips = [ip for ip in self.nova_client.floating_ips.list()
                                 if ip.instance_id == vm.id]
             except AttributeError:
-                floating_ips = self.neutron_client.list_floatingips(id=vm.id)
+                floating_ips_resp = self.neutron_client.list_floatingips(id=vm.id)
+                floating_ips = floating_ips_resp.get('floating_ips', [])
             # allocate new floating IP if none given
             if not floating_ips:
                 self._allocate_address(vm, network_ids)
+            else:
+                log.debug("VM `%s` already allocated floating IPs: %r", vm.id, floating_ips)
 
         self._instances[vm.id] = vm
 
@@ -706,71 +709,129 @@ class OpenStackCloudProvider(AbstractCloudProvider):
             "Instance `{instance_id}` not found"
             .format(instance_id=instance_id))
 
+
     def _allocate_address(self, instance, network_ids):
         """
-        Allocates a floating/public ip address to the given instance.
+        Allocates a floating/public ip address to the given instance,
+        dispatching to either the Compute or Network API depending
+        on installed packages.
 
         :param instance: instance to assign address to
 
-        :param list network_id: List of IDs (as strings) of networks where to
-        request allocation the floating IP.
+        :param list network_id: List of IDs (as strings) of networks
+          where to request allocation the floating IP.
+
+        :return: public ip address
+        """
+        try:
+            # on python-novaclient>=8.0.0 this fails with
+            # `AttributeError` since the `Client.floating_ips`
+            # attribute has been removed
+            return self._allocate_address_nova(instance, network_ids)
+        except AttributeError:
+            return self._allocate_address_neutron(instance, network_ids)
+
+
+    def _allocate_address_nova(self, instance, network_ids):
+        """
+        Allocates a floating/public ip address to the given instance,
+        using the OpenStack Compute ('Nova') API.
+
+        :param instance: instance to assign address to
+
+        :param list network_id: List of IDs (as strings) of networks
+          where to request allocation the floating IP.  **Ignored**
+          (only used by the corresponding Neutron API function).
 
         :return: public ip address
         """
         self._init_os_api()
         with OpenStackCloudProvider.__node_start_lock:
-            try:
-                # Use the `novaclient` API (works with python-novaclient <8.0.0)
-                free_ips = [ip for ip in self.nova_client.floating_ips.list() if not ip.fixed_ip]
-                if not free_ips:
-                    free_ips.append(self.nova_client.floating_ips.create())
-            except AttributeError:
-                # Use the `neutronclient` API
-                #
-                # for some obscure reason, using `fixed_ip_address=None` in the
-                # call to `list_floatingips()` returns *no* results (not even,
-                # in fact, those with `fixed_ip_address: None`) whereas
-                # `fixed_ip_address=''` acts as a wildcard and lists *all* the
-                # addresses... so filter them out with a list comprehension
-                free_ips = [ip for ip in
-                            self.neutron_client.list_floatingips(fixed_ip_address='')['floatingips']
-                            if ip['fixed_ip_address'] is None]
-                if not free_ips:
-                    # FIXME: OpenStack Network API v2 requires that we specify
-                    # a network ID along with the request for a floating IP.
-                    # However, ElastiCluster configuration allows for multiple
-                    # networks to be connected to a VM, but does not give any
-                    # hint as to which one(s) should be used for such requests.
-                    # So we try them all, ignoring errors until one request
-                    # succeeds and hope that it's the OK. One can imagine
-                    # scenarios where this is *not* correct, but: (1) these
-                    # scenarios are unlikely, and (2) the old novaclient code
-                    # above has not even had the concept of multiple networks
-                    # for floating IPs and no-one has complained in 5 years...
-                    allocated_ip = None
-                    for network_id in network_ids:
-                        log.debug(
-                            "Trying to allocate floating IP on network %s ...", network_id)
-                        try:
-                            allocated_ip = self.neutron_client.create_floatingip({
-                                'floatingip': {'floating_network_id':network_id}})
-                        except BadNeutronRequest as err:
-                            log.debug(
-                                "Failed allocating floating IP on network %s: %s",
-                                network_id, err)
-                        if allocated_ip:
-                            free_ips.append(allocated_ip)
-                            break
-                        else:
-                            continue  # try next network
+            # Use the `novaclient` API (works with python-novaclient <8.0.0)
+            free_ips = [ip for ip in self.nova_client.floating_ips.list() if not ip.fixed_ip]
+            if not free_ips:
+                log.debug("Trying to allocate a new floating IP ...")
+                free_ips.append(self.nova_client.floating_ips.create())
             if free_ips:
                 ip = free_ips.pop()
             else:
                 raise RuntimeError(
                     "Could not allocate floating IP for VM {0}"
-                    .format(vm.id))
+                    .format(instance_id))
             instance.add_floating_ip(ip)
         return ip.ip
+
+
+    def _allocate_address_neutron(self, instance, network_ids):
+        """
+        Allocates a floating/public ip address to the given instance,
+        using the OpenStack Network ('Neutron') API.
+
+        :param instance: instance to assign address to
+        :param list network_id:
+          List of IDs (as strings) of networks where to
+          request allocation the floating IP.
+
+        :return: public ip address
+        """
+        self._init_os_api()
+        with OpenStackCloudProvider.__node_start_lock:
+            ip_address = None
+            # for some obscure reason, using `fixed_ip_address=None` in the
+            # call to `list_floatingips()` returns *no* results (not even,
+            # in fact, those with `fixed_ip_address: None`) whereas
+            # `fixed_ip_address=''` acts as a wildcard and lists *all* the
+            # addresses... so filter them out with a list comprehension
+            free_ips = [
+                ip for ip in
+                self.neutron_client.list_floatingips(fixed_ip_address='').get('floatingips')
+                if ip['fixed_ip_address'] is None
+            ]
+            if free_ips:
+                ip_address = free_ips.pop()
+            else:
+                # FIXME: OpenStack Network API v2 requires that we specify
+                # a network ID along with the request for a floating IP.
+                # However, ElastiCluster configuration allows for multiple
+                # networks to be connected to a VM, but does not give any
+                # hint as to which one(s) should be used for such requests.
+                # So we try them all, ignoring errors until one request
+                # succeeds and hope that it's the OK. One can imagine
+                # scenarios where this is *not* correct, but: (1) these
+                # scenarios are unlikely, and (2) the old novaclient code
+                # above has not even had the concept of multiple networks
+                # for floating IPs and no-one has complained in 5 years...
+                for network_id in network_ids:
+                    log.debug(
+                        "Trying to allocate floating IP on network %s ...", network_id)
+                    try:
+                        resp = self.neutron_client.create_floatingip({
+                            'floatingip': {
+                                'floating_network_id':network_id,
+                            }}).get('floatingip')
+                        ip_address = resp['floating_ip_address']
+                        log.debug("Allocated IP address %s on network %s", ip_address, network_id)
+                        break  # stop at first network where we get a floating IP
+                    except BadNeutronRequest as err:
+                        log.debug(
+                            "Failed allocating floating IP on network %s: %s",
+                            network_id, err)
+            if ip_address is None:
+                raise RuntimeError(
+                    "Could not allocate floating IP for VM {0}"
+                    .format(instance_id))
+            # get port ID
+            port_id = self.nova_client.interface_list(instance.id)  # FIXMEEE
+            # assign floating IP to port
+            resp = self.neutron_client.update_floatingip({
+                'floatingip': {
+                    'id': ...,  # FIXMEEE
+                    'port': port_id,
+                }}).get('floatingip')
+            ip_address = resp['floating_ip_address']
+            log.debug("Assigned IP address %s to port %s", ip_address, network_id)
+        return ip_address
+
 
     # Fix pickler
     def __getstate__(self):
