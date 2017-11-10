@@ -221,8 +221,8 @@ class OpenStackCloudProvider(AbstractCloudProvider):
         """
         Initialise client objects for talking to OpenStack API.
 
-        This is in a separate function so to be called by ``__init__`` and
-        ``__setstate__``.
+        This is in a separate function so to be called by ``__init__``
+        and ``__setstate__``.
         """
         if not self.nova_client:
             log.debug("Initializing OpenStack API clients:"
@@ -248,12 +248,17 @@ class OpenStackCloudProvider(AbstractCloudProvider):
             self.neutron_client = neutron_client.Client(
                 #self._network_api_version,  ## doesn't work as of Neutron Client 2 :-(
                 session=sess, region_name=self._os_region_name,
-                cacert=self._os_cacert)
+                ca_cert=self._os_cacert)
+            # FIXME: Glance's `Client` class does not take an explicit
+            # `cacert` parameter, instead it relies on the `session`
+            # argument being "A keystoneauth1 session that should be
+            # used for transport" -- I presume this means that
+            # `cacert` only needs to be set there.  Is this true of
+            # other OpenStack client classes as well?
             log.debug("Creating OpenStack Image API (Glance) v%s client ...", self._image_api_version)
             self.glance_client = glance_client.Client(
                 self._image_api_version, session=sess,
-                region_name=self._os_region_name,
-                cacert=self._os_cacert)
+                region_name=self._os_region_name)
             log.debug("Creating OpenStack Volume API (Cinder) v%s client ...", self._volume_api_version)
             self.cinder_client = cinder_client.Client(
                 self._volume_api_version, session=sess,
@@ -288,12 +293,12 @@ class OpenStackCloudProvider(AbstractCloudProvider):
             password=self._os_password,
             project_name=self._os_tenant_name,
         )
-        sess = keystoneauth1.session.Session(auth=auth)
+        sess = keystoneauth1.session.Session(auth=auth, verify=self._os_cacert)
         if check:
             log.debug("Checking that Keystone API v2 session works...")
             try:
                 # if session is invalid, the following will raise some exception
-                nova = nova_client.Client(self.compute_api_version, session=sess)
+                nova = nova_client.Client(self.compute_api_version, session=sess, cacert=self._os_cacert)
                 nova.flavors.list()
             except keystoneauth1.exceptions.NotFound as err:
                 log.warning("Creating Keystone v2 session failed: %s", err)
@@ -328,7 +333,7 @@ class OpenStackCloudProvider(AbstractCloudProvider):
             project_domain_name=self._os_project_domain_name,
             project_name=self._os_tenant_name,
         )
-        sess = keystoneauth1.session.Session(auth=auth)
+        sess = keystoneauth1.session.Session(auth=auth, verify=self._os_cacert)
         if check:
             log.debug("Checking that Keystone API v3 session works...")
             try:
