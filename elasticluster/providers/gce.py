@@ -291,14 +291,10 @@ class GoogleCloudProvider(AbstractCloudProvider):
             image_url = '%s%s/global/images/%s' % (
                 GCE_URL, os_cloud, image_id)
 
-        if scheduling is None:
-            # use GCE's default
-            scheduling_option = {}
-        elif scheduling == 'preemptible':
-            scheduling_option = {
-              'preemptible': True
-            }
-        else:
+        scheduling_option = {}
+        if scheduling == 'preemptible':
+            scheduling_option['preemptible'] = True
+        elif scheduling is not None:
             raise InstanceError("Unknown scheduling option: '%s'" % scheduling)
 
         if isinstance(tags, types.StringTypes):
@@ -390,6 +386,10 @@ class GoogleCloudProvider(AbstractCloudProvider):
                  'acceleratorType': accelerator_type_url,
              }
             ]
+            # no live migration with GPUs,
+            # see: https://cloud.google.com/compute/docs/gpus#restrictions
+            instance['scheduling']['onHostMaintenance'] = 'TERMINATE'
+            instance['scheduling']['automaticRestart'] = True
 
         # create the instance
         gce = self._connect()
