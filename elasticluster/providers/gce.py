@@ -42,13 +42,11 @@ from oauth2client.file import Storage
 from oauth2client.client import OAuth2WebServerFlow
 from oauth2client.tools import run_flow
 from oauth2client.tools import argparser
-from schema import Schema
 
 # Elasticluster imports
 from elasticluster import log
 from elasticluster.providers import AbstractCloudProvider
 from elasticluster.exceptions import ImageError, InstanceError, InstanceNotFoundError, CloudProviderError
-from elasticluster.validate import url
 
 
 # constants and defaults
@@ -365,9 +363,11 @@ class GoogleCloudProvider(AbstractCloudProvider):
 
         # add accelerators/GPUs if requested
         if accelerator_count > 0:
-            try:
-                accelerator_type_url = Schema(url).validate(accelerator_type)
-            except ValueError:
+            if (accelerator_type.startswith('https://')
+                or accelerator_type.startswith('http://')):
+                # use URL as-is
+                accelerator_type_url = accelerator_type
+            else:
                 accelerator_type_url = (
                     'https://www.googleapis.com/compute/{api_version}/'
                     'projects/{project_id}/zones/{zone}/'
