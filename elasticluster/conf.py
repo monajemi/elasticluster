@@ -119,7 +119,7 @@ SCHEMA = {
             },
         },
         # only on Google Cloud
-        Optional("accelerator_count", default=0): int,
+        Optional("accelerator_count", default=0): nonnegative_int,
         Optional("accelerator_type"): nonempty_str,
         # allow other keys w/out restrictions
         Optional(str): str,

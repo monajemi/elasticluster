@@ -42,12 +42,13 @@ from oauth2client.file import Storage
 from oauth2client.client import OAuth2WebServerFlow
 from oauth2client.tools import run_flow
 from oauth2client.tools import argparser
+from schema import Schema
 
 # Elasticluster imports
 from elasticluster import log
 from elasticluster.providers import AbstractCloudProvider
 from elasticluster.exceptions import ImageError, InstanceError, InstanceNotFoundError, CloudProviderError
-from elasticluster.validate import url as validate_url
+from elasticluster.validate import url
 
 
 # constants and defaults
@@ -103,8 +104,6 @@ class GoogleCloudProvider(AbstractCloudProvider):
         self._client_secret = gce_client_secret
         self._project_id = gce_project_id
 
-        self._accelerator_count = accelerator_count
-        self._accelerator_type = accelerator_type
         self._email = email
         self._network = network
         self._noauth_local_webserver = noauth_local_webserver
@@ -365,9 +364,9 @@ class GoogleCloudProvider(AbstractCloudProvider):
         }
 
         # add accelerators/GPUs if requested
-        if self._accelerator_count > 0:
+        if accelerator_count > 0:
             try:
-                accelerator_type_url = validate_url(self._accelerator_type)
+                accelerator_type_url = Schema(url).validate(accelerator_type)
             except ValueError:
                 accelerator_type_url = (
                     'https://www.googleapis.com/compute/{api_version}/'
@@ -377,13 +376,17 @@ class GoogleCloudProvider(AbstractCloudProvider):
                         api_version=GCE_API_VERSION,
                         project_id=self._project_id,
                         zone=self._zone,
-                        accelerator_type=self._accelerator_type
+                        accelerator_type=accelerator_type
                     ))
-            log.debug("VM instance `%s`: Requesting %d accelerators of type '%s'",
-                      instance_id, self._accelerator_count, accelerator_type_url)
+            log.debug(
+                "VM instance `%s`:"
+                " Requesting %d accelerator%s of type '%s'",
+                instance_id, accelerator_count,
+                ('s' if accelerator_count > 1 else ''),
+                accelerator_type_url)
             instance['guestAccelerators'] = [
              {
-                 'acceleratorCount': self._accelerator_count,
+                 'acceleratorCount': accelerator_count,
                  'acceleratorType': accelerator_type_url,
              }
             ]
