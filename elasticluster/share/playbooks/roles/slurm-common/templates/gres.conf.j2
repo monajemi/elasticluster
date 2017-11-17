@@ -5,16 +5,12 @@
 
 #
 # Slurm's Generic Resource (GRES) configuration file
-# Use a single gres.conf file for all compute nodes
-#
-# **Note:** This file needs to have identical contents on all nodes of
-# the cluster.  See the `slurm.conf` man page for more information.
+# Only list node-specific resources here (avoid
+# issues with cross-node facts availability on Ansible).
 #
 
-{% for host in groups.slurm_worker %}
-{%-  if 'gpus' in hostvars[host] %}
-{%-    for gpu in hostvars[host].gpus %}
-NodeName={{host}} Name=gpu Type={{gpu.model_name}} File={{gpu.device}}
-{%-    endfor %}
-{%-  endif %}
-{% endfor %}
+{% if 'gpus' is defined -%}
+{%   for gpu in gpus -%}
+Name=gpu Type={{gpu.model_name}} File={{gpu.device}}
+{%-   endfor %}
+{%- endif %}
