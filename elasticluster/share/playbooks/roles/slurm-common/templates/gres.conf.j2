@@ -1,0 +1,18 @@
+# THIS FILE IS CONTROLLED BY ELASTICLUSTER
+# local modifications will be overwritten
+# the next time `elasticluster setup` is run!
+#
+
+#
+# Slurm's Generic Resource (GRES) configuration file
+# Use a single gres.conf file for all compute nodes
+#
+# **Note:** This file needs to have identical contents on all nodes of
+# the cluster.  See the `slurm.conf` man page for more information.
+#
+
+{% for host in groups.slurm_worker %}
+{%-  for gpu in hostvars[host].gpus %}
+NodeName={{host}} Name=gpu Type={{gpu.model_name}} File={{gpu.device}}
+{%-  endfor %}
+{% endfor %}
