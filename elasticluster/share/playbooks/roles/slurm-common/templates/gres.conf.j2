@@ -12,7 +12,9 @@
 #
 
 {% for host in groups.slurm_worker %}
-{%-  for gpu in hostvars[host].gpus %}
+{%-  if 'gpus' in hostvars[host] %}
+{%-    for gpu in hostvars[host].gpus %}
 NodeName={{host}} Name=gpu Type={{gpu.model_name}} File={{gpu.device}}
-{%-  endfor %}
+{%-    endfor %}
+{%-  endif %}
 {% endfor %}
