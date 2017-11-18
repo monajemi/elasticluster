@@ -41,6 +41,11 @@
         deb: /tmp/cuda_install.deb
       ignore_errors: yes
       when: "{{cuda_repo_ubuntu_install_check | failed}}" 
+    - name: Update and upgrade apt packages
+      become: true
+      apt:
+         upgrade: yes
+         update_cache: yes  
     - name: CUDA | Install cuda-8-0
       apt:
         name={{item}}
@@ -50,7 +55,8 @@
       when: "{{cuda_repo_ubuntu_install_check | failed}}" 
       become: yes
     #- name: CUDA | check /dev/nvidia* exists
-      # fill later
+    # fill later. if it does, no need to restart
+	# if it doesnt something must have gone wrong
     - name: restart server
       shell: sleep 2 && /sbin/shutdown -r now "Rebooting for CUDA driver"
       async: 1
