@@ -75,7 +75,12 @@ AcctGatherFilesystemType=acct_gather_filesystem/none
 AcctGatherProfileType=acct_gather_profile/none
 #AcctGatherProfileType=acct_gather_profile/hdf5
 
-JobAcctGatherType=jobacct_gather/linux
+
+####
+## Changed by Hatef Monajemi to get rid of memory error
+## When using SLURM with GPUs
+#JobAcctGatherType=jobacct_gather/linux
+JobAcctGatherType=jobacct_gather/none
 JobAcctGatherFrequency=60
 
 
