@@ -25,7 +25,7 @@
       ntp_server: '{{groups.ntp_master|default([])}}'
     - role: pdsh
     - role: cuda
-  tasks:
+  tasks:  
     - name: Gather information about GPUs
       action: gpus
 # Run all other playbooks one by one, so they get a chance of doing
